@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# ---------------------------------------------
+# Ansible Playbook Wrapper with Metadata Logging
+# ---------------------------------------------
+
+LOG_DIR="/var/log/ansible"
+mkdir -p "$LOG_DIR"
+
+# Extract playbook name (first .yml or .yaml argument)
+for arg in "$@"; do
+    if [[ $arg == *.yml ]] || [[ $arg == *.yaml ]]; then
+        PLAYBOOK_NAME=$(basename "$arg" | sed -E 's/\.ya?ml$//')
+        break
+    fi
+done
+PLAYBOOK_NAME=${PLAYBOOK_NAME:-unknown_playbook}
+
+# Metadata
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+DATETIME_HUMAN=$(date)
+USER_NAME=$(whoami)
+COMMAND="ansible-playbook $*"
+LOG_FILE="${LOG_DIR}/${PLAYBOOK_NAME}_${TIMESTAMP}.log"
+
+# Set Ansible logging env
+export ANSIBLE_LOG_PATH="$LOG_FILE"
+export ANSIBLE_FORCE_COLOR=true
+export ANSIBLE_STDOUT_CALLBACK=yaml
+
+# Print metadata to terminal and log
+{
+echo "========================================"
+echo "Ansible Playbook Execution Log"
+echo "Playbook: $PLAYBOOK_NAME"
+echo "Date: $DATETIME_HUMAN"
+echo "User: $USER_NAME"
+echo "Command: $COMMAND"
+echo "========================================"
+echo ""
+} | tee "$LOG_FILE"
+
+# Run Ansible and capture output
+ansible-playbook "$@" 2>&1 | tee -a "$LOG_FILE"
+EXIT_CODE=${PIPESTATUS[0]}
+
+# Footer
+{
+echo ""
+echo "========================================"
+echo "Execution completed at: $(date)"
+echo "Exit code: $EXIT_CODE"
+echo "Log file: $LOG_FILE"
+echo "========================================"
+echo ""
+echo "✅ Full log saved to: $LOG_FILE"
+} | tee -a "$LOG_FILE"
+
+exit $EXIT_CODE
