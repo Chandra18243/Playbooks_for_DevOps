@@ -1,0 +1,25 @@
+---
+- name: Install package based on OS type
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars_prompt:
+    - name: "pkg_name"
+      prompt: "Enter the name of the package to install"
+      private: no
+
+  tasks:
+
+    - name: Install package on Debian/Ubuntu
+      apt:
+        name: "{{ pkg_name }}"
+        state: present
+        update_cache: yes
+      when: ansible_distribution in ["Debian", "Ubuntu"]
+
+    - name: Install package on RHEL/CentOS/Amazon
+      yum:
+        name: "{{ pkg_name }}"
+        state: present
+      when: ansible_distribution in ["RedHat", "CentOS", "Amazon"]
