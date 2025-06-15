@@ -1,22 +1,22 @@
+
 ---
 - name: Collect installed RPMs and fetch JSON reports to Ansible master
   hosts: all
   become: yes
   gather_facts: no
-
   tasks:
-
     - name: Get installed RPMs in JSON format
       shell: |
         rpm -qa --qf '{"name":"%{NAME}","version":"%{VERSION}-%{RELEASE}","arch":"%{ARCH}"}\n'
       register: rpm_output
 
-    - name: Create valid JSON array from rpm output
+    - name: Create JSON fact from RPM output
+      set_fact:
+        installed_rpms: "{{ rpm_output.stdout_lines | map('from_json') | list }}"
+
+    - name: Create formatted JSON file
       copy:
-        content: |
-          [
-          {{ rpm_output.stdout_lines | map('trim') | join(',\n') }}
-          ]
+        content: "{{ installed_rpms | to_nice_json }}"
         dest: "/tmp/{{ inventory_hostname }}_rpms.json"
 
     - name: Ensure report directory exists on control node
