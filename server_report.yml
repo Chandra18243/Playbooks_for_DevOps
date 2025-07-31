@@ -1,0 +1,40 @@
+---
+- name: Gather full system info
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Gather all system facts
+      setup:
+
+    - name: Gather installed package facts
+      package_facts:
+
+    - name: Gather parted partition info
+      command: parted -lm
+      register: parted_output
+      changed_when: false
+      failed_when: false
+
+    - name: Gather disk info (lsblk)
+      command: lsblk -J
+      register: lsblk_output
+      changed_when: false
+      failed_when: false
+
+    - name: Build full system info dictionary
+      set_fact:
+        full_system_info:
+          ansible_facts: "{{ ansible_facts }}"
+          packages: "{{ ansible_facts.packages }}"
+          parted: "{{ parted_output.stdout }}"
+          disks: "{{ lsblk_output.stdout | from_json }}"
+          inventory_hostname: "{{ inventory_hostname }}"
+          timestamp: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S%z') }}"
+
+    - name: Save full system info JSON on control node
+      copy:
+        content: "{{ full_system_info | to_nice_json }}"
+        dest: "/tmp/full-system-info-{{ inventory_hostname }}.json"
+      delegate_to: localhost
