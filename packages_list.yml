@@ -1,0 +1,13 @@
+- name: Gather packages with full details and save JSON
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Gather package facts
+      package_facts:
+
+    - name: Save full package facts JSON on control node
+      copy:
+        content: "{{ ansible_facts.packages | to_nice_json }}"
+        dest: "/tmp/installed-packages-full.json"
+      delegate_to: localhost
