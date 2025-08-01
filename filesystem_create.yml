@@ -1,0 +1,60 @@
+---
+- name: Create, mount, and print disk usage of XFS filesystem on LVM
+  hosts: all
+  become: yes
+
+  vars_prompt:
+    - name: "vg_name"
+      prompt: "Enter the Volume Group (VG) name"
+      private: no
+
+    - name: "lv_name"
+      prompt: "Enter the Logical Volume (LV) name"
+      private: no
+
+    - name: "mount_point"
+      prompt: "Enter the mount point directory (e.g., /data)"
+      private: no
+
+    - name: "lv_size"
+      prompt: "Enter the size of the logical volume (e.g., 2G)"
+      private: no
+
+  tasks:
+    - name: Create logical volume
+      lvol:
+        vg: "{{ vg_name }}"
+        lv: "{{ lv_name }}"
+        size: "{{ lv_size }}"
+        state: present
+
+    - name: Create XFS filesystem
+      filesystem:
+        fstype: xfs
+        dev: "/dev/{{ vg_name }}/{{ lv_name }}"
+
+    - name: Create mount point directory
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+        mode: '0755'
+
+    - name: Mount volume using command module
+      command: mount /dev/{{ vg_name }}/{{ lv_name }} {{ mount_point }}
+      args:
+        creates: "{{ mount_point }}/lost+found"
+
+    - name: Add entry to /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        line: "/dev/{{ vg_name }}/{{ lv_name }} {{ mount_point }} xfs defaults 0 0"
+        state: present
+
+    - name: Show disk usage for the mount point
+      shell: df -h "{{ mount_point }}"
+      register: df_output
+      changed_when: false
+
+    - name: Display df output
+      debug:
+        msg: "{{ df_output.stdout }}"
