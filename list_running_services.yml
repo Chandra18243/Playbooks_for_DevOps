@@ -1,0 +1,16 @@
+---
+- name: List running service names (without .service) and save to /var/log/services.txt
+  hosts: all
+  become: yes
+  tasks:
+    - name: Get running service names without .service suffix
+      shell: SYSTEMD_PAGER=cat systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | cut -d'.' -f1
+      register: running_service_names
+
+    - name: Write cleaned service names to /var/log/services.txt
+      copy:
+        content: "{{ running_service_names.stdout }}"
+        dest: /var/log/services.txt
+        owner: root
+        group: root
+        mode: '0644'
