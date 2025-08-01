@@ -1,0 +1,19 @@
+---
+- name: Install multiple Linux packages using vars_prompt
+  hosts: all
+  become: yes
+
+  vars_prompt:
+    - name: "packages_input"
+      prompt: "Enter the package names separated by space (e.g., vim wget git)"
+      private: no
+
+  vars:
+    package_list: "{{ packages_input.split() }}"
+
+  tasks:
+    - name: Install packages from user input
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ package_list }}"
