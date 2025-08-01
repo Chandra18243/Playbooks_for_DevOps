@@ -1,0 +1,97 @@
+---
+- name: Pre-upgrade capture, upgrade, and post-upgrade validation
+  hosts: all
+  become: yes
+  vars:
+    pre_log: /var/log/pre_upgrade_report.txt
+    post_log: /var/log/post_upgrade_report.txt
+
+  tasks:
+    - name: === PRE-UPGRADE ===
+      block:
+        - name: Capture running services
+          shell: systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | cut -d'.' -f1
+          register: running_services
+
+        - name: Capture CPU info
+          command: lscpu
+          register: cpu_info
+
+        - name: Capture disk usage
+          command: df -h
+          register: disk_usage
+
+        - name: Capture block devices info
+          command: lsblk
+          register: block_info
+
+        - name: Save pre-upgrade report
+          copy:
+            content: |
+              === Running Services ===
+              {{ running_services.stdout }}
+
+              === CPU Info ===
+              {{ cpu_info.stdout }}
+
+              === Disk Usage ===
+              {{ disk_usage.stdout }}
+
+              === Disk Info (lsblk) ===
+              {{ block_info.stdout }}
+            dest: "{{ pre_log }}"
+            mode: '0644'
+
+    - name: === UPGRADE PHASE ===
+      block:
+        - name: Upgrade all packages
+          yum:
+            name: "*"
+            state: latest
+            update_cache: yes
+
+        - name: Regenerate initramfs
+          command: dracut -f
+
+        - name: Set default boot target to multi-user.target
+          command: systemctl set-default multi-user.target
+
+        - name: Reboot system after upgrade
+          reboot:
+            reboot_timeout: 600
+            test_command: whoami
+
+    - name: === POST-UPGRADE ===
+      block:
+        - name: Capture running services (post)
+          shell: systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | cut -d'.' -f1
+          register: running_services_post
+
+        - name: Capture CPU info (post)
+          command: lscpu
+          register: cpu_info_post
+
+        - name: Capture disk usage (post)
+          command: df -h
+          register: disk_usage_post
+
+        - name: Capture block devices info (post)
+          command: lsblk
+          register: block_info_post
+
+        - name: Save post-upgrade report
+          copy:
+            content: |
+              === Running Services ===
+              {{ running_services_post.stdout }}
+
+              === CPU Info ===
+              {{ cpu_info_post.stdout }}
+
+              === Disk Usage ===
+              {{ disk_usage_post.stdout }}
+
+              === Disk Info (lsblk) ===
+              {{ block_info_post.stdout }}
+            dest: "{{ post_log }}"
+            mode: '0644'
