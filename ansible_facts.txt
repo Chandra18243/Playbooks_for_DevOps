@@ -1,0 +1,66 @@
+🖥️ System & OS Facts
+
+Fact	Usage
+
+ansible_hostname	Identify host (naming, reporting)
+ansible_fqdn	Full host identity (DNS tasks)
+ansible_distribution	OS-specific package/install logic
+ansible_distribution_version	Conditional tasks based on OS version
+ansible_os_family	General conditional logic (RedHat, Debian)
+ansible_kernel	Kernel checks, patching
+ansible_selinux.status	Determine if SELinux is enforcing/permissive
+
+
+
+---
+
+🧠 CPU & Memory Facts
+
+Fact	Usage
+
+ansible_processor	Detect CPU model for hardware profiles
+ansible_processor_cores	Performance tuning, CPU-based scaling
+ansible_processor_count	Licensing, resource planning
+ansible_memtotal_mb	Check total memory for sizing
+ansible_memfree_mb	Health monitoring, alerts
+
+
+
+---
+
+🌐 Networking Facts
+
+Fact	Usage
+
+ansible_default_ipv4.address	Primary IP for SSH, service binding
+ansible_default_ipv4.interface	Identify which NIC to configure
+ansible_default_ipv4.gateway	Routing validation, firewall rules
+ansible_interfaces	Audit or configure multiple NICs
+ansible_all_ipv4_addresses	Multi-NIC setups, load balancers
+ansible_eth0.macaddress	MAC-level identity, security filtering
+
+
+
+---
+
+💽 Disk & Filesystem Facts
+
+Fact	Usage
+
+ansible_mounts	Audit mount points, verify available space
+ansible_mounts[].device	Map logical volumes or devices
+ansible_devices	Inspect disks for LVM, RAID setup
+ansible_devices[].size	Disk size checks, provisioning
+ansible_lvm.vgs	Volume group management
+ansible_lvm.lvs	Logical volume info (used in filesystem tasks)
+
+
+---
+
+⏱️ Time & Date Facts
+
+Fact	Usage
+
+ansible_date_time.date	Timestamping logs and backups
+ansible_date_time.time	Track script execution windows
+ansible_date_time.tz	Timezone checks (especially for clusters)
