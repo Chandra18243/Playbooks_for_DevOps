@@ -1,0 +1,20 @@
+---
+- name: Clean package manager cache
+  hosts: all
+  become: yes
+  tasks:
+    - name: Clean APT cache (Debian/Ubuntu)
+      apt:
+        autoclean: yes
+        autoremove: yes
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Clean YUM/DNF cache (RHEL/CentOS/Fedora)
+      yum:
+        name: "*"
+        state: clean
+      when: ansible_facts['os_family'] == "RedHat"
+
+
+      #crontab -e
+      #0 7 * * * ansible-playbook -i /path/to/your/inventory.ini /path/to/clean_package_cache.yml >> /var/log/ansible_clean_cache.log 2>&1
