@@ -42,6 +42,10 @@
             dest: "{{ pre_log }}"
             mode: '0644'
 
+    - name: Switch system to intervention.target before upgrade
+      command: systemctl isolate intervention.target
+      ignore_errors: yes   # just in case SSH is dropped, continue on reconnect
+
     - name: === UPGRADE PHASE ===
       block:
         - name: Upgrade all packages
