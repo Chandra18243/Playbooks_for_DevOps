@@ -24,7 +24,7 @@ if env not in ServerEnvironment.__members__:
 
 server_env = ServerEnvironment[env].value
 
-json_files_dir = "/var/opt/reports/puppet_db"
+json_files_dir = "/var/opt/reports"
 json_pattern = f"svli{env}c*.rpt"
 json_reports = glob.glob(os.path.join(json_files_dir, json_pattern))
 
