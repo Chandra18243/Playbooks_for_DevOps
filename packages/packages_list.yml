@@ -7,8 +7,12 @@
     - name: Gather package facts
       package_facts:
 
+    - name: Register package facts as variable
+      set_fact:
+        pkg_data: "{{ ansible_facts.packages }}"
+
     - name: Save package facts JSON on control node per host
       copy:
-        content: "{{ ansible_facts.packages | to_nice_json }}"
+        content: "{{ pkg_data | to_nice_json }}"
         dest: "/var/opt/reports/{{ inventory_hostname }}.rpt"
       delegate_to: localhost
