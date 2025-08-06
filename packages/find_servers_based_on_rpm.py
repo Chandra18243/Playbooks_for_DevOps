@@ -53,3 +53,6 @@ if installed_servers:
     print(f"File saved with list of servers: {output_file}")
 else:
     print(f"No servers found with package '{rpm}' version '{rpm_version}' in environment '{server_env}'.")
+
+if __name__ == "__main__":
+    main()
