@@ -1,0 +1,34 @@
+- name: Collect vg00 info and generate CSV for Power BI
+  hosts: all
+  gather_facts: false
+  tasks:
+
+    - name: Get vg00 info
+      command: vgs --no-headings --units g --nosuffix --options vg_name,vg_free --select vg_name=vg00
+      register: vg_output
+      failed_when: false
+      changed_when: false
+
+    - name: Extract vg_name using awk
+      shell: echo '{{ vg_output.stdout }}' | awk '{print $1}'
+      register: vg_name_out
+      changed_when: false
+
+    - name: Extract vg_free size using awk
+      shell: echo '{{ vg_output.stdout }}' | awk '{print int($2)}'
+      register: vg_free_out
+      changed_when: false
+
+    - name: Set vg facts
+      set_fact:
+        vg_name: "{{ vg_name_out.stdout | default('vg00') }}"
+        vg_free: "{{ vg_free_out.stdout | default('NotFound') }}"
+
+    - name: Append results to CSV on control node
+      lineinfile:
+        path: "/tmp/vg00_report_all.csv"
+        create: yes
+        line: "{{ inventory_hostname }},{{ vg_name }},{{ vg_free }}"
+        insertafter: EOF
+      delegate_to: localhost
+      run_once: false
