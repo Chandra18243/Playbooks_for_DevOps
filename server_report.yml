@@ -36,5 +36,5 @@
     - name: Save full system info JSON on control node
       copy:
         content: "{{ full_system_info | to_nice_json }}"
-        dest: "/tmp/full-system-info-{{ inventory_hostname }}.json"
+        dest: "/var/opt/reports/{{ inventory_hostname }}.json"
       delegate_to: localhost
