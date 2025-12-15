@@ -8,7 +8,7 @@
 
     - name: Set reboot timeout based on virtualization type
       set_fact:
-        reboot_timeout: "{{ 600 if ansible_facts.virtualization_type != 'NA' else 1500 }}"   
+        reboot_timeout: "{{ 600 if ansible_virtualization_role == 'guest' else 1500 }}"   
 
     - name: Reboot the server and wait for it to come back
       ansible.builtin.reboot:
