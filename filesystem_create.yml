@@ -21,11 +21,7 @@
       private: no
 
   tasks:
-    - name: Ensure xfsprogs is installed
-      package:
-        name: xfsprogs
-        state: present
-
+  
     - name: Check if Volume Group exists
       command: vgdisplay "{{ vg_name }}"
       register: vg_check
