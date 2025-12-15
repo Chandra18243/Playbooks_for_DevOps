@@ -21,6 +21,22 @@
       private: no
 
   tasks:
+    - name: Ensure xfsprogs is installed
+      package:
+        name: xfsprogs
+        state: present
+
+    - name: Check if Volume Group exists
+      command: vgdisplay "{{ vg_name }}"
+      register: vg_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Fail if VG does not exist
+      fail:
+        msg: "The Volume Group '{{ vg_name }}' does not exist. Please create it first."
+      when: vg_check.rc != 0
+
     - name: Create logical volume
       lvol:
         vg: "{{ vg_name }}"
@@ -28,10 +44,22 @@
         size: "{{ lv_size }}"
         state: present
 
+    - name: Check if filesystem already exists on LV
+      command: blkid "/dev/{{ vg_name }}/{{ lv_name }}"
+      register: fs_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Fail if filesystem already exists
+      fail:
+        msg: "Filesystem already exists on /dev/{{ vg_name }}/{{ lv_name }}. Skipping creation to avoid overwrite."
+      when: fs_check.rc == 0
+
     - name: Create XFS filesystem
       filesystem:
         fstype: xfs
         dev: "/dev/{{ vg_name }}/{{ lv_name }}"
+      when: fs_check.rc != 0
 
     - name: Create mount point directory
       file:
@@ -39,19 +67,23 @@
         state: directory
         mode: '0755'
 
-    - name: Mount volume using command module
-      command: mount /dev/{{ vg_name }}/{{ lv_name }} {{ mount_point }}
-      args:
-        creates: "{{ mount_point }}/lost+found"
+    - name: Mount logical volume
+      mount:
+        path: "{{ mount_point }}"
+        src: "/dev/{{ vg_name }}/{{ lv_name }}"
+        fstype: xfs
+        state: mounted
 
-    - name: Add entry to /etc/fstab
-      lineinfile:
-        path: /etc/fstab
-        line: "/dev/{{ vg_name }}/{{ lv_name }} {{ mount_point }} xfs defaults 0 0"
+    - name: Ensure fstab entry exists
+      mount:
+        path: "{{ mount_point }}"
+        src: "/dev/{{ vg_name }}/{{ lv_name }}"
+        fstype: xfs
+        opts: defaults
         state: present
 
     - name: Show disk usage for the mount point
-      shell: df -h "{{ mount_point }}"
+      command: df -h "{{ mount_point }}"
       register: df_output
       changed_when: false
 
