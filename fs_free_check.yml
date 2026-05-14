@@ -1,0 +1,22 @@
+ansible-liser@svlipcll ~/cnu54tw $ cat fs_free_check.yml
+---
+- hosts: all
+  become: true
+
+  vars:
+    filesystem_size:
+      - fs_name: "/"
+        size: 512
+      - fs_name: "/usr"
+        size: 1536
+      - fs_name: "/var"
+        size: 1536
+
+  tasks:
+    - name: "Check if file systems have enough free space"
+      fail:
+        msg: "File systems {{ item.fs_name }} has no enough space"
+      loop: "{{ filesystem_size }}"
+      when: facter_mountpoints[item.fs_name]['available_bytes'] | int /1024/1024 < item.size
+
+ansible-liser@svlipcll ~/cnu54tw $
