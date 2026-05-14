@@ -1,0 +1,73 @@
+---
+- name: Validate and repair RPM database
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    rpmdb_path: /var/lib/rpm
+    rpmdb_preserve_dir: /var/preserve
+    rpmdb_backupfile: "{{ rpmdb_preserve_dir }}/rpmdb-{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}.tar.gz"
+    rpmdb_verify_cmd: /usr/lib/rpm/rpmdb_verify Packages
+    rpmdb_rebuild_rhel8: rpm -vv --rebuilddb
+    rpmdb_rebuild_rhel9: rpm --rebuilddb
+
+  tasks:
+
+    - name: Check if rpm query works
+      command: rpm -qa | grep redhat
+      register: rpm_check
+      failed_when: false
+
+    - name: Print rpm db status
+      debug:
+        msg: "{{ 'rpm db working fine, skipping' if rpm_check.rc == 0 else 'rpm db corrupted, continuing for rebuild' }}"
+
+    # - name: End play if rpm db is fine
+    #   meta: end_play
+    #   when:
+    #     - rpm_check.rc == 0
+
+    - block:
+        - name: Preserve rpmdb for RHEL 8
+          archive:
+            path: "{{ rpmdb_path }}"
+            dest: "{{ rpmdb_backupfile }}"
+            format: gz
+
+        - name: Remove stale locks for RHEL 8
+          file:
+            path: "{{ rpmdb_path }}/__db*"
+            state: absent
+
+        - name: Verify rpmdb for RHEL 8
+          command: "{{ rpmdb_verify_cmd }}"
+          register: verify_rpmdb
+          failed_when: false
+
+        - name: Rebuild rpmdb for RHEL 8
+          command: "{{ rpmdb_rebuild_rhel8 }}"
+      when:
+        - rpm_check.rc != 0
+        - ansible_distribution_major_version == "8"
+
+    - block:
+        - name: Preserve rpmdb for RHEL 9
+          archive:
+            path: "{{ rpmdb_path }}"
+            dest: "{{ rpmdb_backupfile }}"
+            format: gz
+
+        - name: Rebuild rpmdb for RHEL 9
+          command: "{{ rpmdb_rebuild_rhel9 }}"
+      when:
+        - rpm_check.rc != 0
+        - ansible_distribution_major_version == "9"
+
+    - name: Verify rpm query after rebuild
+      command: rpm -qa | grep redhat
+      register: rpm_final_check
+      failed_when: false
+
+    - name: Print rpm final status
+      debug:
+        msg: "{{ 'rpm works fine after rebuild' if rpm_final_check.rc == 0 else 'rpm still corrupted after rebuild' }}"
