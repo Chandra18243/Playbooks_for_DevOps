@@ -18,3 +18,4 @@
 
       #crontab -e
       #0 7 * * * ansible-playbook -i /path/to/your/inventory.ini /path/to/clean_package_cache.yml >> /var/log/ansible_clean_cache.log 2>&1
+#testing
