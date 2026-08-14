@@ -2,12 +2,9 @@
 - name: Gather full system info
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
 
   tasks:
-    - name: Gather all system facts
-      setup:
-
     - name: Gather installed package facts
       package_facts:
 
