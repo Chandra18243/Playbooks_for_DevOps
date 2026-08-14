@@ -2,13 +2,21 @@
 - name: Pre-upgrade capture, upgrade, and post-upgrade validation
   hosts: all
   become: yes
+
   vars:
     pre_log: /var/log/pre_upgrade_report.txt
     post_log: /var/log/post_upgrade_report.txt
+    target_kernel: "5.14.0-503.35.1.el9_5.x86_64"
 
   tasks:
+
     - name: === PRE-UPGRADE ===
       block:
+
+        - name: Capture running kernel
+          command: uname -r
+          register: pre_kernel
+
         - name: Capture running services
           shell: systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | cut -d'.' -f1
           register: running_services
@@ -27,7 +35,12 @@
 
         - name: Save pre-upgrade report
           copy:
+            dest: "{{ pre_log }}"
+            mode: '0644'
             content: |
+              === Kernel Version ===
+              {{ pre_kernel.stdout }}
+
               === Running Services ===
               {{ running_services.stdout }}
 
@@ -37,17 +50,16 @@
               === Disk Usage ===
               {{ disk_usage.stdout }}
 
-              === Disk Info (lsblk) ===
+              === Block Device Info ===
               {{ block_info.stdout }}
-            dest: "{{ pre_log }}"
-            mode: '0644'
 
     - name: Switch system to intervention.target before upgrade
       command: systemctl isolate intervention.target
-      ignore_errors: yes   # just in case SSH is dropped, continue on reconnect
+      ignore_errors: yes
 
     - name: === UPGRADE PHASE ===
       block:
+
         - name: Upgrade all packages
           yum:
             name: "*"
@@ -57,35 +69,48 @@
         - name: Regenerate initramfs
           command: dracut -f
 
-        - name: Set default boot target to multi-user.target
+        - name: Set default boot target
           command: systemctl set-default multi-user.target
 
-        - name: Reboot system after upgrade
+        - name: Reboot server
           reboot:
             reboot_timeout: 600
             test_command: whoami
 
     - name: === POST-UPGRADE ===
       block:
-        - name: Capture running services (post)
+
+        - name: Get running kernel version after reboot
+          command: uname -r
+          register: post_kernel
+
+        - name: Capture running services
           shell: systemctl list-units --type=service --state=running --no-legend | awk '{print $1}' | cut -d'.' -f1
           register: running_services_post
 
-        - name: Capture CPU info (post)
+        - name: Capture CPU info
           command: lscpu
           register: cpu_info_post
 
-        - name: Capture disk usage (post)
+        - name: Capture disk usage
           command: df -h
           register: disk_usage_post
 
-        - name: Capture block devices info (post)
+        - name: Capture block devices info
           command: lsblk
           register: block_info_post
 
         - name: Save post-upgrade report
           copy:
+            dest: "{{ post_log }}"
+            mode: '0644'
             content: |
+              === Target Kernel ===
+              {{ target_kernel }}
+
+              === Running Kernel ===
+              {{ post_kernel.stdout }}
+
               === Running Services ===
               {{ running_services_post.stdout }}
 
@@ -95,7 +120,22 @@
               === Disk Usage ===
               {{ disk_usage_post.stdout }}
 
-              === Disk Info (lsblk) ===
+              === Block Device Info ===
               {{ block_info_post.stdout }}
-            dest: "{{ post_log }}"
-            mode: '0644'
+
+        - name: Fail if target kernel does not match running kernel
+          fail:
+            msg: >
+              Target kernel does not match the running kernel after upgrade.
+              Expected kernel: {{ target_kernel }}
+              Running kernel: {{ post_kernel.stdout }}
+
+              Please check the server manually.
+          when: target_kernel != post_kernel.stdout
+
+        - name: Upgrade successful
+          debug:
+            msg: >
+              SUCCESS: Server upgraded successfully to the latest kernel.
+              Running kernel: {{ post_kernel.stdout }}
+          when: target_kernel == post_kernel.stdout
