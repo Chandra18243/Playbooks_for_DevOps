@@ -7,6 +7,7 @@
   tasks:
     - name: Gather installed package facts
       package_facts:
+        manager: auto
 
     - name: Gather parted partition info
       command: parted -lm
@@ -14,9 +15,15 @@
       changed_when: false
       failed_when: false
 
-    - name: Gather disk info (lsblk)
+    - name: Gather disk info
       command: lsblk -J
       register: lsblk_output
+      changed_when: false
+      failed_when: false
+
+    - name: Gather filesystem information
+      command: df -hP
+      register: filesystem_output
       changed_when: false
       failed_when: false
 
@@ -27,11 +34,24 @@
           packages: "{{ ansible_facts.packages }}"
           parted: "{{ parted_output.stdout }}"
           disks: "{{ lsblk_output.stdout | from_json }}"
+          filesystem: "{{ filesystem_output.stdout }}"
           inventory_hostname: "{{ inventory_hostname }}"
           timestamp: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S%z') }}"
+
+    - name: Ensure report directory exists on control node
+      file:
+        path: /var/opt/reports
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
 
     - name: Save full system info JSON on control node
       copy:
         content: "{{ full_system_info | to_nice_json }}"
         dest: "/var/opt/reports/{{ inventory_hostname }}.json"
+        mode: '0644'
       delegate_to: localhost
+
+
+#Add this to conrtab
+#0 7 * * * /usr/bin/ansible-playbook -i /home/ansible/inventory /home/ansible/gather_system_info.yml >> /var/log/ansible-system-info.log 2>&1
